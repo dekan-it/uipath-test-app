@@ -1,0 +1,351 @@
+from pathlib import Path
+import zipfile, textwrap, json, os
+
+base = Path("/mnt/data/uipath_test_login")
+base.mkdir(parents=True, exist_ok=True)
+
+html = r"""<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>UiPath Testanwendung – Login</title>
+  <style>
+    :root {
+      font-family: Arial, Helvetica, sans-serif;
+      color: #1f2937;
+      background: #f5f7fb;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+    .card {
+      width: min(100%, 460px);
+      background: white;
+      border: 1px solid #d8dee9;
+      border-radius: 14px;
+      padding: 28px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+    h1 {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+    }
+    .subtitle {
+      margin: 0 0 24px;
+      color: #5b6472;
+      line-height: 1.45;
+    }
+    label {
+      display: block;
+      margin: 14px 0 6px;
+      font-weight: 700;
+    }
+    input {
+      width: 100%;
+      padding: 11px 12px;
+      border: 1px solid #aeb7c4;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    input:focus {
+      outline: 2px solid #2d6cdf;
+      outline-offset: 1px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 18px;
+      flex-wrap: wrap;
+    }
+    button {
+      border: 0;
+      border-radius: 8px;
+      padding: 11px 16px;
+      font-size: .98rem;
+      cursor: pointer;
+    }
+    #loginButton {
+      background: #1f5fbf;
+      color: white;
+      font-weight: 700;
+      flex: 1 1 180px;
+    }
+    #resetButton {
+      background: #e9edf3;
+      color: #273142;
+      flex: 1 1 160px;
+    }
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .message {
+      margin-top: 18px;
+      padding: 12px 14px;
+      border-radius: 8px;
+      line-height: 1.4;
+      min-height: 46px;
+    }
+    .message.info { background: #eef4ff; }
+    .message.error { background: #fff0f0; }
+    .message.success { background: #edf9f0; }
+    .message.locked { background: #fff5df; }
+    .attempts {
+      margin-top: 12px;
+      font-size: .92rem;
+      color: #5b6472;
+    }
+    .demo-data {
+      margin-top: 22px;
+      padding-top: 18px;
+      border-top: 1px solid #e5e9ef;
+      font-size: .92rem;
+      color: #525d6b;
+      line-height: 1.5;
+    }
+    code {
+      background: #f0f2f5;
+      padding: 2px 5px;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body>
+  <main class="card" id="loginCard">
+    <h1>Demo-Anmeldung</h1>
+    <p class="subtitle">
+      Testanwendung für UiPath-Schulungen. Nach fünf fehlgeschlagenen
+      Anmeldeversuchen wird das Testkonto gesperrt.
+    </p>
+
+    <form id="loginForm" novalidate>
+      <label for="username">Benutzername</label>
+      <input
+        id="username"
+        name="username"
+        data-testid="username"
+        type="text"
+        autocomplete="off"
+      />
+
+      <label for="password">Passwort</label>
+      <input
+        id="password"
+        name="password"
+        data-testid="password"
+        type="password"
+        autocomplete="off"
+      />
+
+      <div class="actions">
+        <button id="loginButton" data-testid="login-button" type="submit">
+          Anmelden
+        </button>
+        <button id="resetButton" data-testid="reset-button" type="button">
+          Demo zurücksetzen
+        </button>
+      </div>
+    </form>
+
+    <div
+      id="message"
+      data-testid="message"
+      class="message info"
+      role="status"
+      aria-live="polite"
+    >
+      Noch keine Anmeldung durchgeführt.
+    </div>
+
+    <div id="attempts" data-testid="attempt-counter" class="attempts"></div>
+
+    <div class="demo-data">
+      <strong>Testzugang:</strong><br />
+      Benutzername: <code>testuser</code><br />
+      Passwort: <code>Test123!</code>
+    </div>
+  </main>
+
+  <script>
+    (() => {
+      const MAX_ATTEMPTS = 5;
+      const VALID_USERNAME = "testuser";
+      const VALID_PASSWORD = "Test123!";
+
+      const form = document.getElementById("loginForm");
+      const username = document.getElementById("username");
+      const password = document.getElementById("password");
+      const loginButton = document.getElementById("loginButton");
+      const resetButton = document.getElementById("resetButton");
+      const message = document.getElementById("message");
+      const attempts = document.getElementById("attempts");
+
+      let failedAttempts = Number(localStorage.getItem("uipathDemoFailedAttempts") || 0);
+      let locked = localStorage.getItem("uipathDemoLocked") === "true";
+
+      function setMessage(text, type) {
+        message.textContent = text;
+        message.className = "message " + type;
+      }
+
+      function renderState() {
+        if (locked) {
+          setMessage(
+            "Das Konto ist gesperrt. Eine Anmeldung ist auch mit korrekten Zugangsdaten nicht mehr möglich.",
+            "locked"
+          );
+          attempts.textContent = "Fehlversuche: 5 von 5";
+          loginButton.disabled = false;
+        } else {
+          attempts.textContent = `Fehlversuche: ${failedAttempts} von ${MAX_ATTEMPTS}`;
+          loginButton.disabled = false;
+        }
+      }
+
+      function saveState() {
+        localStorage.setItem("uipathDemoFailedAttempts", String(failedAttempts));
+        localStorage.setItem("uipathDemoLocked", String(locked));
+      }
+
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const userValue = username.value.trim();
+        const passwordValue = password.value;
+
+        if (locked) {
+          setMessage(
+            "Das Konto ist gesperrt. Bitte die Demo zurücksetzen.",
+            "locked"
+          );
+          renderState();
+          return;
+        }
+
+        if (!userValue || !passwordValue) {
+          setMessage(
+            "Benutzername und Passwort sind Pflichtfelder.",
+            "error"
+          );
+          return;
+        }
+
+        if (userValue === VALID_USERNAME && passwordValue === VALID_PASSWORD) {
+          failedAttempts = 0;
+          saveState();
+          setMessage(
+            "Anmeldung erfolgreich. Willkommen in der Demo-Anwendung.",
+            "success"
+          );
+          attempts.textContent = "Fehlversuche: 0 von 5";
+          return;
+        }
+
+        failedAttempts += 1;
+
+        if (failedAttempts >= MAX_ATTEMPTS) {
+          failedAttempts = MAX_ATTEMPTS;
+          locked = true;
+          saveState();
+          setMessage(
+            "Das Konto wurde nach fünf fehlgeschlagenen Anmeldeversuchen gesperrt.",
+            "locked"
+          );
+          attempts.textContent = "Fehlversuche: 5 von 5";
+          return;
+        }
+
+        saveState();
+        const remaining = MAX_ATTEMPTS - failedAttempts;
+        setMessage(
+          `Ungültige Zugangsdaten. Noch ${remaining} ${remaining === 1 ? "Versuch" : "Versuche"} bis zur Kontosperre.`,
+          "error"
+        );
+        attempts.textContent = `Fehlversuche: ${failedAttempts} von ${MAX_ATTEMPTS}`;
+      });
+
+      resetButton.addEventListener("click", () => {
+        failedAttempts = 0;
+        locked = false;
+        localStorage.removeItem("uipathDemoFailedAttempts");
+        localStorage.removeItem("uipathDemoLocked");
+        username.value = "";
+        password.value = "";
+        setMessage("Demo wurde zurückgesetzt.", "info");
+        attempts.textContent = "Fehlversuche: 0 von 5";
+        username.focus();
+      });
+
+      renderState();
+    })();
+  </script>
+</body>
+</html>
+"""
+
+readme = """UiPath Testanwendung – Login-Demo
+
+Zweck
+-----
+Die Seite dient als einfache Web-Testanwendung für eine Schulung zu
+UiPath RPA mit KI und Generative AI.
+
+Testzugang
+----------
+Benutzername: testuser
+Passwort: Test123!
+
+Regeln
+------
+- Leere Felder führen zu einer Pflichtfeldmeldung.
+- Gültige Zugangsdaten führen zu einer erfolgreichen Anmeldung.
+- Ungültige Zugangsdaten erhöhen den Fehlversuchszähler.
+- Nach 5 Fehlversuchen wird das Konto gesperrt.
+- Nach der Sperre bleibt das Konto auch bei korrekten Zugangsdaten gesperrt.
+- "Demo zurücksetzen" setzt den Zustand vollständig zurück.
+- Der Zustand wird im Browser per localStorage gespeichert.
+
+UiPath-freundliche Element-IDs
+------------------------------
+username
+password
+loginButton
+resetButton
+message
+attempts
+
+Vorgeschlagene Übung
+--------------------
+1. Demo zurücksetzen.
+2. Mit Benutzername "testuser" und einem falschen Passwort anmelden.
+3. Prüfen, ob die Fehlermeldung und der Zähler "1 von 5" erscheinen.
+4. Den Fehlversuch insgesamt 5-mal durchführen.
+5. Prüfen, ob die Kontosperre angezeigt wird.
+6. Danach mit dem korrekten Passwort "Test123!" anmelden.
+7. Prüfen, ob die Anmeldung weiterhin abgewiesen wird.
+8. Demo zurücksetzen.
+9. Mit korrekten Zugangsdaten anmelden und den Erfolgsfall prüfen.
+
+Hosting
+-------
+Für GitHub Pages genügt es, index.html in ein Repository zu legen und
+GitHub Pages für den Branch zu aktivieren. Es ist kein Backend nötig.
+"""
+
+(base / "index.html").write_text(html, encoding="utf-8")
+(base / "README.txt").write_text(readme, encoding="utf-8")
+
+zip_path = Path("/mnt/data/uipath_test_login_demo.zip")
+with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
+    z.write(base / "index.html", arcname="index.html")
+    z.write(base / "README.txt", arcname="README.txt")
+
+print(f"Erstellt: {base / 'index.html'}")
+print(f"Erstellt: {base / 'README.txt'}")
+print(f"Erstellt: {zip_path}")
