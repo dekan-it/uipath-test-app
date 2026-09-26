@@ -535,11 +535,8 @@
       const attempts = document.getElementById("attempts");
       const progressBar = document.getElementById("progressBar");
 
-      let failedAttempts = Number(
-        localStorage.getItem("uipathDemoFailedAttempts") || 0
-      );
-      let locked =
-        localStorage.getItem("uipathDemoLocked") === "true";
+      let failedAttempts = Number(localStorage.getItem("uipathDemoFailedAttempts") || 0);
+      let locked = localStorage.getItem("uipathDemoLocked") === "true";
 
       function setMessage(text, type) {
         message.textContent = text;
@@ -548,22 +545,13 @@
 
       function updateAttemptDisplay() {
         attempts.textContent = `${failedAttempts} von ${MAX_ATTEMPTS}`;
-        const percentage = Math.min(
-          100,
-          (failedAttempts / MAX_ATTEMPTS) * 100
-        );
+        const percentage = Math.min(100, (failedAttempts / MAX_ATTEMPTS) * 100);
         progressBar.style.width = percentage + "%";
       }
 
       function saveState() {
-        localStorage.setItem(
-          "uipathDemoFailedAttempts",
-          String(failedAttempts)
-        );
-        localStorage.setItem(
-          "uipathDemoLocked",
-          String(locked)
-        );
+        localStorage.setItem("uipathDemoFailedAttempts", String(failedAttempts));
+        localStorage.setItem("uipathDemoLocked", String(locked));
       }
 
       function renderState() {
@@ -600,10 +588,7 @@
           return;
         }
 
-        if (
-          userValue === VALID_USERNAME &&
-          passwordValue === VALID_PASSWORD
-        ) {
+        if (userValue === VALID_USERNAME && passwordValue === VALID_PASSWORD) {
           failedAttempts = 0;
           saveState();
           updateAttemptDisplay();
@@ -631,8 +616,7 @@
         saveState();
         updateAttemptDisplay();
 
-        const remaining =
-          MAX_ATTEMPTS - failedAttempts;
+        const remaining = MAX_ATTEMPTS - failedAttempts;
 
         setMessage(
           `Ungültige Zugangsdaten. Noch ${remaining} ${
