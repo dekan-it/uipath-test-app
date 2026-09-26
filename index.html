@@ -1,176 +1,574 @@
 from pathlib import Path
-import zipfile, textwrap, json, os
-
-base = Path("/mnt/data/uipath_test_login")
-base.mkdir(parents=True, exist_ok=True)
 
 html = r"""<!DOCTYPE html>
 <html lang="de">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>UiPath Testanwendung – Login</title>
+  <title>UiPath Training – Testanwendung</title>
   <style>
     :root {
-      font-family: Arial, Helvetica, sans-serif;
-      color: #1f2937;
-      background: #f5f7fb;
+      --bg: #f5f7fb;
+      --panel: #ffffff;
+      --panel-soft: #f8fafc;
+      --border: #dbe2ea;
+      --text: #172033;
+      --muted: #667085;
+      --primary: #3b5bfd;
+      --primary-hover: #2f4ce0;
+      --success-bg: #edf9f1;
+      --success-border: #b9e5c7;
+      --success-text: #176b35;
+      --error-bg: #fff1f2;
+      --error-border: #fecdd3;
+      --error-text: #a61b2b;
+      --warning-bg: #fff7e8;
+      --warning-border: #f7d69a;
+      --warning-text: #8a5a00;
+      --info-bg: #eef4ff;
+      --info-border: #cbd8ff;
+      --info-text: #2846a8;
+      --shadow: 0 18px 45px rgba(23, 32, 51, 0.10);
+      --radius: 18px;
     }
-    * { box-sizing: border-box; }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
     body {
       margin: 0;
       min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(59, 91, 253, 0.09), transparent 32%),
+        linear-gradient(180deg, #f8faff 0%, var(--bg) 100%);
+    }
+
+    .page {
+      width: min(1120px, calc(100% - 32px));
+      margin: 0 auto;
+      padding: 36px 0 48px;
+    }
+
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+      padding: 18px 22px;
+      background: rgba(255,255,255,0.88);
+      border: 1px solid rgba(219,226,234,0.9);
+      border-radius: 16px;
+      box-shadow: 0 8px 24px rgba(23,32,51,0.06);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      gap: 14px;
+      align-items: center;
+    }
+
+    .brand-mark {
+      width: 44px;
+      height: 44px;
       display: grid;
       place-items: center;
-      padding: 24px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #3b5bfd, #6f85ff);
+      color: white;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      box-shadow: 0 8px 20px rgba(59,91,253,0.25);
     }
+
+    .brand h1 {
+      margin: 0;
+      font-size: 1.08rem;
+      line-height: 1.2;
+    }
+
+    .brand p {
+      margin: 4px 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      background: #f2f4f7;
+      color: #475467;
+      font-size: 0.88rem;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .status-dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: #22c55e;
+      box-shadow: 0 0 0 4px rgba(34,197,94,0.12);
+    }
+
+    .hero {
+      margin-bottom: 26px;
+    }
+
+    .hero h2 {
+      margin: 0;
+      font-size: clamp(1.8rem, 4vw, 2.6rem);
+      line-height: 1.1;
+      letter-spacing: -0.03em;
+    }
+
+    .hero p {
+      max-width: 760px;
+      margin: 14px 0 0;
+      color: var(--muted);
+      font-size: 1.03rem;
+      line-height: 1.65;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
+      gap: 24px;
+      align-items: start;
+    }
+
     .card {
-      width: min(100%, 460px);
-      background: white;
-      border: 1px solid #d8dee9;
-      border-radius: 14px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+    }
+
+    .login-card {
       padding: 28px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
     }
-    h1 {
-      margin: 0 0 8px;
-      font-size: 1.55rem;
+
+    .card-header {
+      margin-bottom: 22px;
     }
-    .subtitle {
-      margin: 0 0 24px;
-      color: #5b6472;
-      line-height: 1.45;
+
+    .eyebrow {
+      display: inline-block;
+      margin-bottom: 8px;
+      color: var(--primary);
+      font-weight: 700;
+      font-size: 0.78rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
     }
+
+    .card-header h3 {
+      margin: 0;
+      font-size: 1.45rem;
+    }
+
+    .card-header p {
+      margin: 8px 0 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .form-group {
+      margin-bottom: 18px;
+    }
+
     label {
       display: block;
-      margin: 14px 0 6px;
+      margin-bottom: 7px;
+      font-size: 0.93rem;
       font-weight: 700;
     }
+
     input {
       width: 100%;
-      padding: 11px 12px;
-      border: 1px solid #aeb7c4;
-      border-radius: 8px;
+      border: 1px solid #cbd5e1;
+      border-radius: 11px;
+      padding: 12px 14px;
       font-size: 1rem;
+      color: var(--text);
+      background: white;
+      transition: border-color 0.18s ease, box-shadow 0.18s ease;
     }
+
     input:focus {
-      outline: 2px solid #2d6cdf;
-      outline-offset: 1px;
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 4px rgba(59,91,253,0.12);
     }
+
     .actions {
       display: flex;
-      gap: 10px;
-      margin-top: 18px;
+      gap: 12px;
       flex-wrap: wrap;
+      margin-top: 6px;
     }
+
     button {
+      appearance: none;
       border: 0;
-      border-radius: 8px;
-      padding: 11px 16px;
-      font-size: .98rem;
-      cursor: pointer;
-    }
-    #loginButton {
-      background: #1f5fbf;
-      color: white;
+      border-radius: 11px;
+      padding: 12px 16px;
+      font-size: 0.96rem;
       font-weight: 700;
+      cursor: pointer;
+      transition: transform 0.12s ease, background 0.18s ease, box-shadow 0.18s ease;
+    }
+
+    button:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
       flex: 1 1 180px;
+      background: var(--primary);
+      color: white;
+      box-shadow: 0 8px 18px rgba(59,91,253,0.2);
     }
-    #resetButton {
-      background: #e9edf3;
-      color: #273142;
+
+    .btn-primary:hover {
+      background: var(--primary-hover);
+    }
+
+    .btn-secondary {
       flex: 1 1 160px;
+      background: #eef1f5;
+      color: #344054;
     }
-    button:disabled {
-      opacity: .55;
-      cursor: not-allowed;
+
+    .btn-secondary:hover {
+      background: #e5e9ef;
     }
+
     .message {
-      margin-top: 18px;
-      padding: 12px 14px;
-      border-radius: 8px;
-      line-height: 1.4;
-      min-height: 46px;
-    }
-    .message.info { background: #eef4ff; }
-    .message.error { background: #fff0f0; }
-    .message.success { background: #edf9f0; }
-    .message.locked { background: #fff5df; }
-    .attempts {
-      margin-top: 12px;
-      font-size: .92rem;
-      color: #5b6472;
-    }
-    .demo-data {
-      margin-top: 22px;
-      padding-top: 18px;
-      border-top: 1px solid #e5e9ef;
-      font-size: .92rem;
-      color: #525d6b;
+      margin-top: 20px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      border: 1px solid var(--info-border);
+      background: var(--info-bg);
+      color: var(--info-text);
       line-height: 1.5;
+      font-weight: 600;
     }
-    code {
-      background: #f0f2f5;
-      padding: 2px 5px;
-      border-radius: 4px;
+
+    .message.info {
+      border-color: var(--info-border);
+      background: var(--info-bg);
+      color: var(--info-text);
+    }
+
+    .message.error {
+      border-color: var(--error-border);
+      background: var(--error-bg);
+      color: var(--error-text);
+    }
+
+    .message.success {
+      border-color: var(--success-border);
+      background: var(--success-bg);
+      color: var(--success-text);
+    }
+
+    .message.locked {
+      border-color: var(--warning-border);
+      background: var(--warning-bg);
+      color: var(--warning-text);
+    }
+
+    .attempt-panel {
+      margin-top: 14px;
+      padding: 14px 16px;
+      border-radius: 12px;
+      background: var(--panel-soft);
+      border: 1px solid #e7ebf0;
+    }
+
+    .attempt-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      align-items: center;
+      font-size: 0.92rem;
+    }
+
+    .attempt-row strong {
+      font-size: 1rem;
+    }
+
+    .progress {
+      height: 9px;
+      background: #e8edf3;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+    }
+
+    .progress-bar {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(90deg, #3b5bfd, #8b5cf6);
+      transition: width 0.25s ease;
+    }
+
+    .side {
+      display: grid;
+      gap: 18px;
+    }
+
+    .info-card {
+      padding: 22px;
+    }
+
+    .info-card h4 {
+      margin: 0 0 12px;
+      font-size: 1.05rem;
+    }
+
+    .info-card p {
+      margin: 0;
+      color: var(--muted);
+      line-height: 1.55;
+    }
+
+    .credentials {
+      display: grid;
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    .credential {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 11px 12px;
+      background: #f8fafc;
+      border: 1px solid #e7ebf0;
+      border-radius: 10px;
+      font-size: 0.92rem;
+    }
+
+    .credential span {
+      color: var(--muted);
+    }
+
+    .credential code {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+      font-weight: 700;
+      color: #1f2937;
+    }
+
+    .steps {
+      margin: 14px 0 0;
+      padding-left: 20px;
+      color: #475467;
+      line-height: 1.6;
+    }
+
+    .steps li + li {
+      margin-top: 7px;
+    }
+
+    .footer-note {
+      margin-top: 24px;
+      color: #7a8493;
+      font-size: 0.86rem;
+      text-align: center;
+    }
+
+    @media (max-width: 860px) {
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      .topbar {
+        align-items: flex-start;
+        flex-direction: column;
+      }
+
+      .status-pill {
+        align-self: flex-start;
+      }
+    }
+
+    @media (max-width: 560px) {
+      .page {
+        width: min(100% - 20px, 1120px);
+        padding-top: 20px;
+      }
+
+      .login-card,
+      .info-card {
+        padding: 20px;
+      }
+
+      .actions {
+        flex-direction: column;
+      }
+
+      .btn-primary,
+      .btn-secondary {
+        width: 100%;
+        flex-basis: auto;
+      }
     }
   </style>
 </head>
 <body>
-  <main class="card" id="loginCard">
-    <h1>Demo-Anmeldung</h1>
-    <p class="subtitle">
-      Testanwendung für UiPath-Schulungen. Nach fünf fehlgeschlagenen
-      Anmeldeversuchen wird das Testkonto gesperrt.
-    </p>
-
-    <form id="loginForm" novalidate>
-      <label for="username">Benutzername</label>
-      <input
-        id="username"
-        name="username"
-        data-testid="username"
-        type="text"
-        autocomplete="off"
-      />
-
-      <label for="password">Passwort</label>
-      <input
-        id="password"
-        name="password"
-        data-testid="password"
-        type="password"
-        autocomplete="off"
-      />
-
-      <div class="actions">
-        <button id="loginButton" data-testid="login-button" type="submit">
-          Anmelden
-        </button>
-        <button id="resetButton" data-testid="reset-button" type="button">
-          Demo zurücksetzen
-        </button>
+  <div class="page">
+    <header class="topbar">
+      <div class="brand">
+        <div class="brand-mark">UI</div>
+        <div>
+          <h1>UiPath Training – Testanwendung</h1>
+          <p>Demo für automatisierte Login-Tests</p>
+        </div>
       </div>
-    </form>
 
-    <div
-      id="message"
-      data-testid="message"
-      class="message info"
-      role="status"
-      aria-live="polite"
-    >
-      Noch keine Anmeldung durchgeführt.
+      <div class="status-pill">
+        <span class="status-dot"></span>
+        Schulungsumgebung aktiv
+      </div>
+    </header>
+
+    <section class="hero">
+      <h2>Login-Test mit Kontosperre</h2>
+      <p>
+        Diese Testanwendung dient zur Durchführung von UiPath-Übungen.
+        Nach fünf fehlgeschlagenen Anmeldeversuchen wird das Testkonto gesperrt.
+        Der Status wird ausschließlich im jeweiligen Browser gespeichert, sodass
+        mehrere Teilnehmende gleichzeitig mit derselben Seite arbeiten können.
+      </p>
+    </section>
+
+    <main class="grid">
+      <section class="card login-card" id="loginCard">
+        <div class="card-header">
+          <span class="eyebrow">Testsystem</span>
+          <h3>Anmeldung</h3>
+          <p>Für die Übung können gültige und ungültige Zugangsdaten getestet werden.</p>
+        </div>
+
+        <form id="loginForm" novalidate>
+          <div class="form-group">
+            <label for="username">Benutzername</label>
+            <input
+              id="username"
+              name="username"
+              data-testid="username"
+              type="text"
+              autocomplete="off"
+              placeholder="Benutzername eingeben"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="password">Passwort</label>
+            <input
+              id="password"
+              name="password"
+              data-testid="password"
+              type="password"
+              autocomplete="off"
+              placeholder="Passwort eingeben"
+            />
+          </div>
+
+          <div class="actions">
+            <button
+              id="loginButton"
+              data-testid="login-button"
+              class="btn-primary"
+              type="submit"
+            >
+              Anmelden
+            </button>
+
+            <button
+              id="resetButton"
+              data-testid="reset-button"
+              class="btn-secondary"
+              type="button"
+            >
+              Demo zurücksetzen
+            </button>
+          </div>
+        </form>
+
+        <div
+          id="message"
+          data-testid="message"
+          class="message info"
+          role="status"
+          aria-live="polite"
+        >
+          Noch keine Anmeldung durchgeführt.
+        </div>
+
+        <div class="attempt-panel">
+          <div class="attempt-row">
+            <span>Fehlgeschlagene Anmeldeversuche</span>
+            <strong id="attempts" data-testid="attempt-counter">0 von 5</strong>
+          </div>
+          <div class="progress" aria-hidden="true">
+            <div id="progressBar" class="progress-bar"></div>
+          </div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <section class="card info-card">
+          <h4>Testzugang</h4>
+          <p>Mit diesen Zugangsdaten kann der positive Anmeldefall getestet werden.</p>
+
+          <div class="credentials">
+            <div class="credential">
+              <span>Benutzername</span>
+              <code>testuser</code>
+            </div>
+            <div class="credential">
+              <span>Passwort</span>
+              <code>Test123!</code>
+            </div>
+          </div>
+        </section>
+
+        <section class="card info-card">
+          <h4>Übungsziel</h4>
+          <p>
+            Die Anwendung soll nach fünf fehlerhaften Anmeldeversuchen das Konto sperren.
+          </p>
+
+          <ol class="steps">
+            <li>Mit falschem Passwort anmelden.</li>
+            <li>Fehlermeldung und Zähler prüfen.</li>
+            <li>Insgesamt fünf Fehlversuche ausführen.</li>
+            <li>Kontosperre überprüfen.</li>
+            <li>Danach mit korrekten Daten erneut anmelden.</li>
+            <li>Prüfen, ob die Sperre weiterhin aktiv ist.</li>
+          </ol>
+        </section>
+      </aside>
+    </main>
+
+    <div class="footer-note">
+      Demo-Anwendung für Schulungszwecke · keine echten Benutzer- oder Kundendaten
     </div>
-
-    <div id="attempts" data-testid="attempt-counter" class="attempts"></div>
-
-    <div class="demo-data">
-      <strong>Testzugang:</strong><br />
-      Benutzername: <code>testuser</code><br />
-      Passwort: <code>Test123!</code>
-    </div>
-  </main>
+  </div>
 
   <script>
     (() => {
@@ -181,36 +579,51 @@ html = r"""<!DOCTYPE html>
       const form = document.getElementById("loginForm");
       const username = document.getElementById("username");
       const password = document.getElementById("password");
-      const loginButton = document.getElementById("loginButton");
       const resetButton = document.getElementById("resetButton");
       const message = document.getElementById("message");
       const attempts = document.getElementById("attempts");
+      const progressBar = document.getElementById("progressBar");
 
-      let failedAttempts = Number(localStorage.getItem("uipathDemoFailedAttempts") || 0);
-      let locked = localStorage.getItem("uipathDemoLocked") === "true";
+      let failedAttempts = Number(
+        localStorage.getItem("uipathDemoFailedAttempts") || 0
+      );
+      let locked =
+        localStorage.getItem("uipathDemoLocked") === "true";
 
       function setMessage(text, type) {
         message.textContent = text;
         message.className = "message " + type;
       }
 
+      function updateAttemptDisplay() {
+        attempts.textContent = `${failedAttempts} von ${MAX_ATTEMPTS}`;
+        const percentage = Math.min(
+          100,
+          (failedAttempts / MAX_ATTEMPTS) * 100
+        );
+        progressBar.style.width = percentage + "%";
+      }
+
+      function saveState() {
+        localStorage.setItem(
+          "uipathDemoFailedAttempts",
+          String(failedAttempts)
+        );
+        localStorage.setItem(
+          "uipathDemoLocked",
+          String(locked)
+        );
+      }
+
       function renderState() {
+        updateAttemptDisplay();
+
         if (locked) {
           setMessage(
             "Das Konto ist gesperrt. Eine Anmeldung ist auch mit korrekten Zugangsdaten nicht mehr möglich.",
             "locked"
           );
-          attempts.textContent = "Fehlversuche: 5 von 5";
-          loginButton.disabled = false;
-        } else {
-          attempts.textContent = `Fehlversuche: ${failedAttempts} von ${MAX_ATTEMPTS}`;
-          loginButton.disabled = false;
         }
-      }
-
-      function saveState() {
-        localStorage.setItem("uipathDemoFailedAttempts", String(failedAttempts));
-        localStorage.setItem("uipathDemoLocked", String(locked));
       }
 
       form.addEventListener("submit", (event) => {
@@ -224,7 +637,7 @@ html = r"""<!DOCTYPE html>
             "Das Konto ist gesperrt. Bitte die Demo zurücksetzen.",
             "locked"
           );
-          renderState();
+          updateAttemptDisplay();
           return;
         }
 
@@ -236,14 +649,17 @@ html = r"""<!DOCTYPE html>
           return;
         }
 
-        if (userValue === VALID_USERNAME && passwordValue === VALID_PASSWORD) {
+        if (
+          userValue === VALID_USERNAME &&
+          passwordValue === VALID_PASSWORD
+        ) {
           failedAttempts = 0;
           saveState();
+          updateAttemptDisplay();
           setMessage(
             "Anmeldung erfolgreich. Willkommen in der Demo-Anwendung.",
             "success"
           );
-          attempts.textContent = "Fehlversuche: 0 von 5";
           return;
         }
 
@@ -253,32 +669,44 @@ html = r"""<!DOCTYPE html>
           failedAttempts = MAX_ATTEMPTS;
           locked = true;
           saveState();
+          updateAttemptDisplay();
           setMessage(
             "Das Konto wurde nach fünf fehlgeschlagenen Anmeldeversuchen gesperrt.",
             "locked"
           );
-          attempts.textContent = "Fehlversuche: 5 von 5";
           return;
         }
 
         saveState();
-        const remaining = MAX_ATTEMPTS - failedAttempts;
+        updateAttemptDisplay();
+
+        const remaining =
+          MAX_ATTEMPTS - failedAttempts;
+
         setMessage(
-          `Ungültige Zugangsdaten. Noch ${remaining} ${remaining === 1 ? "Versuch" : "Versuche"} bis zur Kontosperre.`,
+          `Ungültige Zugangsdaten. Noch ${remaining} ${
+            remaining === 1 ? "Versuch" : "Versuche"
+          } bis zur Kontosperre.`,
           "error"
         );
-        attempts.textContent = `Fehlversuche: ${failedAttempts} von ${MAX_ATTEMPTS}`;
       });
 
       resetButton.addEventListener("click", () => {
         failedAttempts = 0;
         locked = false;
+
         localStorage.removeItem("uipathDemoFailedAttempts");
         localStorage.removeItem("uipathDemoLocked");
+
         username.value = "";
         password.value = "";
-        setMessage("Demo wurde zurückgesetzt.", "info");
-        attempts.textContent = "Fehlversuche: 0 von 5";
+
+        updateAttemptDisplay();
+        setMessage(
+          "Demo wurde zurückgesetzt. Der Ausgangszustand ist wiederhergestellt.",
+          "info"
+        );
+
         username.focus();
       });
 
@@ -289,63 +717,6 @@ html = r"""<!DOCTYPE html>
 </html>
 """
 
-readme = """UiPath Testanwendung – Login-Demo
-
-Zweck
------
-Die Seite dient als einfache Web-Testanwendung für eine Schulung zu
-UiPath RPA mit KI und Generative AI.
-
-Testzugang
-----------
-Benutzername: testuser
-Passwort: Test123!
-
-Regeln
-------
-- Leere Felder führen zu einer Pflichtfeldmeldung.
-- Gültige Zugangsdaten führen zu einer erfolgreichen Anmeldung.
-- Ungültige Zugangsdaten erhöhen den Fehlversuchszähler.
-- Nach 5 Fehlversuchen wird das Konto gesperrt.
-- Nach der Sperre bleibt das Konto auch bei korrekten Zugangsdaten gesperrt.
-- "Demo zurücksetzen" setzt den Zustand vollständig zurück.
-- Der Zustand wird im Browser per localStorage gespeichert.
-
-UiPath-freundliche Element-IDs
-------------------------------
-username
-password
-loginButton
-resetButton
-message
-attempts
-
-Vorgeschlagene Übung
---------------------
-1. Demo zurücksetzen.
-2. Mit Benutzername "testuser" und einem falschen Passwort anmelden.
-3. Prüfen, ob die Fehlermeldung und der Zähler "1 von 5" erscheinen.
-4. Den Fehlversuch insgesamt 5-mal durchführen.
-5. Prüfen, ob die Kontosperre angezeigt wird.
-6. Danach mit dem korrekten Passwort "Test123!" anmelden.
-7. Prüfen, ob die Anmeldung weiterhin abgewiesen wird.
-8. Demo zurücksetzen.
-9. Mit korrekten Zugangsdaten anmelden und den Erfolgsfall prüfen.
-
-Hosting
--------
-Für GitHub Pages genügt es, index.html in ein Repository zu legen und
-GitHub Pages für den Branch zu aktivieren. Es ist kein Backend nötig.
-"""
-
-(base / "index.html").write_text(html, encoding="utf-8")
-(base / "README.txt").write_text(readme, encoding="utf-8")
-
-zip_path = Path("/mnt/data/uipath_test_login_demo.zip")
-with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
-    z.write(base / "index.html", arcname="index.html")
-    z.write(base / "README.txt", arcname="README.txt")
-
-print(f"Erstellt: {base / 'index.html'}")
-print(f"Erstellt: {base / 'README.txt'}")
-print(f"Erstellt: {zip_path}")
+path = Path("/mnt/data/index.html")
+path.write_text(html, encoding="utf-8")
+print(path)
